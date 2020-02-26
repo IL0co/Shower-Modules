@@ -1,0 +1,48 @@
+"Phrases"
+{
+	"display"
+	{
+		"en"			"Ladder huds"
+		"ru"			"Худ лесенки"
+		"ua"			"Худ cходів"
+	}
+	
+	"shower_healt"
+	{
+		"en"			"Ladder of health"
+		"ru"			"Лестница здоровья"
+		"ua"			"Сходи здоров’я"
+	}
+	"shower_healt_description"
+	{
+		"en"			"Shows your hp changes"
+		"ru"			"Показывает изменения твоего хп"
+		"ua"			"Показує зміни твого хп"
+	}
+	
+	"shower_armor"
+	{
+		"en"			"Ladder of armor"
+		"ru"			"Лестница брони"
+		"ua"			"Сходи броні"
+	}
+	"shower_armor_description"
+	{
+		"en"			"Shows your armor changes"
+		"ru"			"Показывает изменения твоей брони"
+		"ua"			"Показує зміни твоєї броні"
+	}
+	
+	"shower_damage"
+	{
+		"en"			"Ladder of damage"
+		"ru"			"Лестница ущерба"
+		"ua"			"Драбина пошкодження"
+	}
+	"shower_damage_description"
+	{
+		"en"			"Shows the damage done"
+		"ru"			"Показывает нанесённый урон"
+		"ua"			"Показує нанесений урон"
+	}
+}
