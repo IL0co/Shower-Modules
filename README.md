@@ -41,6 +41,14 @@ This pack has 9 modules:
 
 # Installation 
 
+## Vip modules
+<b>Add these lines to the desired group in the groups.ini file</b>
+```
+"shower_healt"  "1/0"
+"shower_damage"  "1/0"
+"shower_armor"  "1/0"
+```
+
 ## Requirements
 * Straight arms
 * SourceMode 1.7+
