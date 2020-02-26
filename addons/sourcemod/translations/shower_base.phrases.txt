@@ -1,0 +1,35 @@
+"Phrases"
+{
+	"Plus"
+	{
+		"en"			"[ + ] "
+	}
+	"Minus"
+	{
+		"en"			"[ - ] "
+	}
+	"Health"
+	{
+		"en"			"Ladder of health"
+		"ru"			"Лестница здоровья"
+		"ua"			"Сходи здоров’я"
+	}
+	"Armor"
+	{
+		"en"			"Ladder of armor"
+		"ru"			"Лестница брони"
+		"ua"			"Сходи броні"
+	}
+	"Damage"
+	{
+		"en"			"Ladder of damage"
+		"ru"			"Лестница ущерба"
+		"ua"			"Драбина пошкодження"
+	}
+	"Killed"
+	{
+		"en"			"KILLED"
+		"ru"			"УБИЛ"
+		"ua"			"УБИЛ"
+	}
+}
