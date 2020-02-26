@@ -72,9 +72,6 @@ This pack has 9 modules:
 * **shower_damage.cfg** - For plugin **shower_damage**
 * **shower_health.cfg** - For plugin **shower_health**
 
-## Other sites with this plugin
-* [HLMOD](https://forums.alliedmods.net/showthread.php?t=292207)
-
 ## Contributions
 Contributions are always welcome!
 Just make a [pull request](../../pulls).
