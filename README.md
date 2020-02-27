@@ -20,7 +20,7 @@
 * CSS
 * Other source games? Respond!
 ## Description
-* Has a flexible adjustment of the position of the hood
+* Has a flexible adjustment of the position of the hud
 <br>
 
 This pack has 9 modules:
@@ -49,9 +49,9 @@ This pack has 9 modules:
 "shower_armor"  "1/0"
 ```
 
-## Requirements
+<!-- ## Requirements
 * Straight arms
-* SourceMode 1.7+
+* SourceMode 1.7+ -->
 
 ## Installation Instructions
 1. Drop all files on to the server folder
@@ -81,7 +81,7 @@ Just make a [pull request](../../pulls).
 
 
 # Plans
-* Add modules to [<b>this</b>](https://hlmod.ru/resources/levels-ranks-core.177/) core
+* Add modules to [<b>LR Core</b>](https://hlmod.ru/resources/levels-ranks-core.177/) core
 
 # Changed Log
 1.0
