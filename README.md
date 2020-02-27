@@ -82,3 +82,9 @@ Just make a [pull request](../../pulls).
 
 # Plans
 * Add modules to [<b>this</b>](https://hlmod.ru/resources/levels-ranks-core.177/) core
+
+# Changed Log
+1.0
+``` bash
+1. Release
+```
