@@ -8,28 +8,58 @@
 	{
 		"en"			"[ - ] "
 	}
-	"Health"
+	
+	"Menu. Any. Health"
 	{
-		"en"			"Ladder of health"
-		"ru"			"Лестница здоровья"
-		"ua"			"Сходи здоров’я"
+		"en"			"Health display"
+		"ru"			"Показ здоровья"
 	}
-	"Armor"
+	"Menu. Any. Armor"
 	{
-		"en"			"Ladder of armor"
-		"ru"			"Лестница брони"
-		"ua"			"Сходи броні"
+		"en"			"Armor display"
+		"ru"			"Показ брони"
 	}
-	"Damage"
+	"Menu. Any. Damage"
 	{
-		"en"			"Ladder of damage"
-		"ru"			"Лестница ущерба"
-		"ua"			"Драбина пошкодження"
+		"en"			"Damage display"
+		"ru"			"Показ урона"
 	}
+	
+	"Menu. VIP. Health"
+	{
+		"en"			"Health display"
+		"ru"			"Показ здоровья"
+	}
+	"Menu. VIP. Armor"
+	{
+		"en"			"Armor display"
+		"ru"			"Показ брони"
+	}
+	"Menu. VIP. Damage"
+	{
+		"en"			"Damage display"
+		"ru"			"Показ урона"
+	}
+	
+	"Menu. SHOP. Health"
+	{
+		"en"			"Health display"
+		"ru"			"Показ здоровья"
+	}
+	"Menu. SHOP. Armor"
+	{
+		"en"			"Armor display"
+		"ru"			"Показ брони"
+	}
+	"Menu. SHOP. Damage"
+	{
+		"en"			"Damage display"
+		"ru"			"Показ урона"
+	}
+	
 	"Killed"
 	{
 		"en"			"KILLED"
 		"ru"			"УБИЛ"
-		"ua"			"ВБИВ"
 	}
 }

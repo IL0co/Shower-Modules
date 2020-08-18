@@ -1,130 +1,227 @@
-#pragma semicolon 1
 #include <clientprefs>
+#include <sourcemod>
+
+#undef REQUIRE_PLUGIN
+#tryinclude <vip_core>
+#undef REQUIRE_PLUGIN
+#tryinclude <shop>
 
 public Plugin myinfo = 
 {
-	name		= "Shower of Damage",
-	version		= "1.0",
+	name		= "[VIP/SHOP/ANY] Shower of Damage",
+	version		= "1.0.1",
 	description	= "Shower of your damage",
-	author		= "ღ λŌK0ЌЭŦ ღ ™",
+	author		= "iLoco",
 	url			= "https://github.com/IL0co"
 }
 
+#pragma semicolon 1
+#pragma newdecls required
+
 static const char SPACE[][][] = {{"", "", "", "", "", "", ""},
-						  		{"", " ", "  ", "   ", "    ", "     ", "      "},
-								{"", "  ", "    ", "      ", "        ", "          ", "            "}, 
-								{"", "   ", "      ", "         ", "            ", "               ", "                  "},
-								{"", "    ", "        ", "            ", "                ", "                    ", "                        "},
-								{"", "     ", "          ", "               ", "                    ", "                         ", "                              "},
-								{"", "      ", "            ", "                  ", "                        ", "                              ", "                                    "},
-								{"", "       ", "              ", "                     ", "                            ", "                                   ", "                                         "}};
+						  		{"", " ", "  ", "   ", "	", "	 ", "	  "},
+								{"", "  ", "	", "	  ", "		", "		  ", "			"}, 
+								{"", "   ", "	  ", "		 ", "			", "			   ", "				  "},
+								{"", "	", "		", "			", "				", "					", "						"},
+								{"", "	 ", "		  ", "			   ", "					", "						 ", "							  "},
+								{"", "	  ", "			", "				  ", "						", "							  ", "									"},
+								{"", "	   ", "			  ", "					 ", "							", "								   ", "										 "}};
 
-char oldValue[MAXPLAYERS+1][5][16];
-float iTime[MAXPLAYERS+1];
-	
-bool g_bHUD[MAXPLAYERS+1];
-	
-Handle g_hCookie, iHud, iTimer[MAXPLAYERS+1];
+enum ShowerEnable
+{
+	NONE = 0,
+	ANY = 1,
+	VIP = 2,
+	SHOP = 4
+};
 
-ConVar cvar_cCount, 
-	   cvar_cType,
-	   cvar_cTimeClean, 
-	   cvar_cTypePoss, 
-	   cvar_cHudColor, 
-	   cvar_cHudPoss, 
-	   cvar_cTimeHide, 
-	   cvar_cEnable;
+char gPath[256];
+KeyValues kv;
+Cookie gCookie;
+ShowerEnable gEnable;
 
-int cCount, cType, cTypePoss, cHudColor[4];
-float cTimeClean, cHudPoss[2], cTimeHide;
-bool cEnable;
+char iOldValues[MAXPLAYERS+1][5][16];
+Handle gHud, iTimer[MAXPLAYERS+1];
+ShowerEnable iEnable[MAXPLAYERS+1];
+
+public APLRes AskPluginLoad2(Handle plugin, bool late, char[] error, int max)
+{
+	__pl_vip_core_SetNTVOptional();
+	__pl_shop_SetNTVOptional();
+
+	return APLRes_Success;
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	if(strcmp(name, "vip_core", false) == 0)
+		gEnable |= VIP;
+
+	if(strcmp(name, "shop", false) == 0)
+		gEnable |= SHOP;
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if(strcmp(name, "vip_core", false) == 0)
+		gEnable &= ~VIP;
+
+	if(strcmp(name, "shop", false) == 0)
+		gEnable &= ~SHOP;
+}
+
+public void OnPluginEnd()
+{
+	if(gEnable & VIP)
+		VIP_UnregisterMe();
+
+	if(gEnable & SHOP)
+		Shop_UnregisterMe();
+}
 
 public void OnPluginStart()
 {
-	iHud = CreateHudSynchronizer();
-	g_hCookie = RegClientCookie("shower_damage", "shower_damage", CookieAccess_Private);
-	SetCookieMenuItem(CreditsCookieHandler, 0, "shower_damage");
-	for(int i = 1; i <= MaxClients; i++)	if(IsClientInGame(i) && IsClientAuthorized(i))
+	BuildPath(Path_SM, gPath, sizeof(gPath), "configs/shower_damage.cfg");
+	LoadCfg();
+
+	if(LibraryExists("vip_core"))
+	{
+		gEnable |= VIP;
+
+		if(VIP_IsVIPLoaded())
+			VIP_OnVIPLoaded();
+	}
+
+	if(LibraryExists("shop"))
+	{
+		gEnable |= SHOP;
+
+		if(Shop_IsStarted())	
+			Shop_Started();
+	}
+
+	gHud = CreateHudSynchronizer();
+
+	if(gEnable & ANY)
+	{
+		gCookie = new Cookie("shower_damage", "shower_damage", CookieAccess_Private);
+		SetCookieMenuItem(CreditsCookieHandler, 0, "shower_damage");
+	}
+
+	for(int i = 1; i <= MaxClients; i++)	if(IsClientAuthorized(i) && IsClientInGame(i))
+	{
 		OnClientCookiesCached(i);
-
-	(cvar_cEnable = CreateConVar("sm_shower_damage_enable", "1", "RU: Включен ли плагин?\nEN: Enabled plugin?", _, true, 0.0, true, 1.0)).AddChangeHook(CVarChanged);
-	cEnable = cvar_cEnable.BoolValue;
-
-	(cvar_cCount = CreateConVar("sm_shower_damage_count", "5", "RU: Количество столбиков\nEN: Number of posts", _, true, 1.0, true, 5.0)).AddChangeHook(CVarChanged);
-	cCount = cvar_cCount.IntValue;
-
-	(cvar_cType = CreateConVar("sm_shower_damage_type", "2", "RU: На сколько смещать каждую новую строчку? (в пробелах)\nEN: How much to shift each new line? (in spaces)", _, true, 0.0, true, 7.0)).AddChangeHook(CVarChanged);
-	cType = cvar_cType.IntValue;
-
-	(cvar_cTypePoss = CreateConVar("sm_shower_damage_type_poss", "2", "RU: Куда уходит лесенка начиная от прицела?, 0 - в левый низ, 1 - в правый вверх, 2 - в правый низ, 3 - в левый вверх\nEN: Where does the ladder go from the sight ?, 0 - to the left bottom, 1 - to the right up, 2 - to the right bottom, 3 - to the left up", _, true, 0.0, true, 3.0)).AddChangeHook(CVarChanged);
-	cTypePoss = cvar_cTypePoss.IntValue;
-
-	(cvar_cTimeClean = CreateConVar("sm_shower_damage_clean_time", "2.0", "RU: Время очищения истории\nEN: History Cleansing Time", _, true, 0.1)).AddChangeHook(CVarChanged);
-	cTimeClean = cvar_cTimeClean.FloatValue;
-
-	(cvar_cHudColor = CreateConVar("sm_shower_damage_rgba", "255 0 0 255", "RU: RGBA цвет худа\nEN: RGBA color hud")).AddChangeHook(CVarChanged);
-	SetHUDColor(cvar_cHudColor);
-
-	(cvar_cHudPoss = CreateConVar("sm_shower_damage_poss", "0.54 0.5", "RU: XY позиция худа\nEN: XY hud position")).AddChangeHook(CVarChanged);
-	SetHUDPosition(cvar_cHudPoss);
-
-	(cvar_cTimeHide = CreateConVar("sm_shower_damage_hide_time", "2.0", "RU: Время скрытия худа\nEN: Hud hiding time", _, true, 0.1)).AddChangeHook(CVarChanged);
-	cTimeHide = cvar_cTimeHide.FloatValue;
-
-	AutoExecConfig(true, "shower_damage");
+		OnClientPostAdminCheck(i);
+	}
 
 	HookEvent("player_hurt", Event_PlayerHurt);
 
 	LoadTranslations("shower_base.phrases");
 }
 
-public void CVarChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
+public void VIP_OnVIPLoaded()
 {
-	if(cvar == cvar_cCount)				cCount = cvar.IntValue;
-	else if(cvar == cvar_cType)			cType = cvar.IntValue;
-	else if(cvar == cvar_cTypePoss)		cTypePoss = cvar.IntValue;
-	else if(cvar == cvar_cTimeClean)	cTimeClean = cvar.FloatValue;
-	else if(cvar == cvar_cTimeHide)		cTimeHide = cvar.FloatValue;
-	else if(cvar == cvar_cEnable)		cEnable = cvar.BoolValue;
-	else if(cvar == cvar_cHudColor)		SetHUDColor(cvar);
-	else if(cvar == cvar_cHudPoss)		SetHUDPosition(cvar);
+	if(gEnable & VIP && JumpTo(0, "vip"))
+	{
+		char feature[64];
+		kv.GetString("vip feature name", feature, sizeof(feature), "shower_damage");
+		VIP_RegisterFeature(feature, BOOL, _, CallBack_VIP_OnItemToggled, CallBack_VIP_OnItemDisplay);
+	}
+}
+
+public Action CallBack_VIP_OnItemToggled(int client, const char[] sFeatureName, VIP_ToggleState OldStatus, VIP_ToggleState &NewStatus)
+{
+	if(NewStatus == ENABLED)
+		iEnable[client] |= VIP;
+	else
+		iEnable[client] &= ~VIP;
+
+	return Plugin_Continue;
+}
+
+public bool CallBack_VIP_OnItemDisplay(int client, const char[] feature, char[] buffer, int maxlen)
+{
+	FormatEx(buffer, maxlen, "%T", "Menu. VIP. Damage", client);
+	VIP_AddStringToggleStatus(buffer, buffer, maxlen, feature, client);
+
+	return true;
+}
+
+public void Shop_Started()
+{
+	if(!(gEnable & SHOP) || !JumpTo(0, "shop"))
+		return;
+
+	char item[64];
+	kv.GetString("vip feature name", item, sizeof(item), "shower_damage");
+
+	CategoryId category_id = Shop_RegisterCategory("stuff", "stuff", "");
+	if(Shop_StartItem(category_id, item))
+	{
+		Shop_SetInfo(item, "", kv.GetNum("shop item price"), kv.GetNum("shop item sell price"), Item_Togglable, kv.GetNum("shop item duration"));
+		Shop_SetCallbacks(_, CallBack_Shop_OnItemUsed, _, CallBack_Shop_OnDisplay);
+		Shop_EndItem();
+	}
+}
+
+public bool CallBack_Shop_OnDisplay(int client, CategoryId category_id, const char[] category, ItemId item_id, const char[] item, ShopMenu menu, bool &disabled, const char[] name, char[] buffer, int maxlen)
+{
+	FormatEx(buffer, maxlen, "%T", "Menu. SHOP. Damage", client);
+	return true;
+}
+
+public ShopAction CallBack_Shop_OnItemUsed(int client, CategoryId category_id, const char[] category, ItemId item_id, const char[] item, bool isOn, bool elapsed)
+{
+	if(!isOn)
+		iEnable[client] |= SHOP;
+	else
+		iEnable[client] &= ~SHOP;
+
+	if (isOn || elapsed)
+		return Shop_UseOff;
+
+	return Shop_UseOn;
 }
 
 public Action Event_PlayerHurt(Event hEvent, const char[] name, bool dontBroadcast)
 {
-	if(!cEnable) return Plugin_Continue;
+	static char textBuff[256];
+	static int client, victim, damage, rgba[4];
+	static float pos[3];
 
-	int client = GetClientOfUserId(GetEventInt(hEvent, "attacker")),
-		victim = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	client = GetClientOfUserId(GetEventInt(hEvent, "attacker"));
 
-	if(!client || !IsClientInGame(client) && !g_bHUD[client]) return Plugin_Continue;
+	if(!client || !IsClientInGame(client) || !JumpTo(client)) 
+		return Plugin_Continue;
 
-	char textBuff[256];
-	int damage = GetEventInt(hEvent, "dmg_health");
+	victim = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 
 	if(client != victim)
 	{
-		iTime[client] = cTimeClean;
-		iTimer[client] = CreateTimer(0.1, TimerDamege_Clean, GetClientUserId(client), TIMER_REPEAT);
-
-		if(damage == -1) Format(oldValue[client][0], sizeof(oldValue[][]), "%T", "Killed", client);
-		else Format(oldValue[client][0], sizeof(oldValue[][]), "-%i", damage);
-
-		switch(cTypePoss)
-		{
-			case 0: Procc_Left_Down(client, textBuff, sizeof(textBuff));
-			case 1: Procc_Right_Up(client, textBuff, sizeof(textBuff));
-			case 2: Procc_Right_Down(client, textBuff, sizeof(textBuff));
-			case 3: Procc_Left_Up(client, textBuff, sizeof(textBuff));
-		}
+		damage = GetEventInt(hEvent, "dmg_health");
 		
-		for(int poss = cCount-1; poss > 0; poss--)	
-			oldValue[client][poss] = oldValue[client][poss-1];
+		if(iTimer[client]) 
+			delete iTimer[client];
+		iTimer[client] = CreateTimer(kv.GetFloat("clean time", 1.0), TimerDamege_Clean, GetClientUserId(client), TIMER_REPEAT);
 
-		SetHudTextParams(cHudPoss[0], cHudPoss[1], cTimeHide, cHudColor[0], cHudColor[1], cHudColor[2], cHudColor[3], 0, 0.0, 0.1, 0.1);
-		ShowSyncHudText(client, iHud, textBuff);
+		if(damage == -1) 
+			Format(iOldValues[client][0], sizeof(iOldValues[][]), "%T", "Killed", client);
+		else 
+			Format(iOldValues[client][0], sizeof(iOldValues[][]), "-%i", damage);
+		
+		SetTextAlign(client, kv.GetNum("number of offsets", 1), kv.GetNum("align"), textBuff, sizeof(textBuff));
+		
+		for(int poss = kv.GetNum("number of columns") - 1; poss > 0; poss--)	
+			iOldValues[client][poss] = iOldValues[client][poss-1];
+
+		kv.GetColor4("hud color", rgba);
+		kv.GetVector("hud position", pos);
+
+		SetHudTextParams(pos[0], pos[1], kv.GetFloat("hide time", 3.0), rgba[0], rgba[1], rgba[2], rgba[3], 0, 0.0, 0.1, 0.1);
+		ShowSyncHudText(client, gHud, textBuff);
 
 	}
+
 	return Plugin_Continue;
 }
 
@@ -132,100 +229,131 @@ public Action TimerDamege_Clean(Handle timer, any client)
 {
 	client = GetClientOfUserId(client);
 
-	if(!client || !IsClientInGame(client) || iTimer[client] != timer)
-		return Plugin_Stop;
+	for(int poss = 0; poss < 5; poss++)
+		iOldValues[client][poss][0] = '\0';
 
-	if((iTime[client] -= 0.1) <= 0.0)
-	{
-		for(int poss = 0; poss < cCount; poss++)
-			oldValue[client][poss][0] = '\0';
+	iTimer[client] = null;
 			
-		return Plugin_Stop;
-	}
+	return Plugin_Stop;
+}
 
-	return Plugin_Continue;
+public void OnClientPostAdminCheck(int client)
+{
+	iEnable[client] = NONE;
+	iTimer[client] = null;
 }
 
 public void OnClientCookiesCached(int client)
 {
-    char szValue[4];
-    GetClientCookie(client, g_hCookie, szValue, sizeof(szValue));
-    if(!szValue[0]) g_bHUD[client] = true;
-    else g_bHUD[client] = view_as<bool>(StringToInt(szValue));
+	if(!(gEnable & ANY)) 
+		return;
+
+	char buff[4];
+	gCookie.Get(client, buff, sizeof(buff));
+
+	if(!buff[0] || buff[0] == '1') 
+		iEnable[client] |= ANY;
 }
 
 public void CreditsCookieHandler(int client, CookieMenuAction action, any info, char[] buffer, int maxlen)
 {
-	if(!cEnable) return;
-	switch (action)
-    {
-		case CookieMenuAction_DisplayOption:
-		{
-			SetGlobalTransTarget(client);
-			FormatEx(buffer, maxlen, "%t%t", g_bHUD[client] ? "Plus" : "Minus", "Damage");
-		}
-		case CookieMenuAction_SelectOption:
-		{
-			if(g_bHUD[client]) 	SetClientCookie(client, g_hCookie, "0");
-			else 				SetClientCookie(client, g_hCookie, "1");
-
-			g_bHUD[client] = !g_bHUD[client];
-			
-			ShowCookieMenu(client);
-		}
-    }
-}
-
-stock void Procc_Right_Up(int client, char[] textBuff, int size = 256)
-{
-	for(int poss = cCount; poss > 0; poss--)
+	if(action == CookieMenuAction_DisplayOption)
 	{
-		if(oldValue[client][poss-1][0])
-			Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[cType][poss], oldValue[client][poss-1]);
+		SetGlobalTransTarget(client);
+		FormatEx(buffer, maxlen, "%t%t", iEnable[client] & ANY ? "Plus" : "Minus", "Menu. Any. Damage");
+	}
+	else if(action == CookieMenuAction_SelectOption)
+	{	
+		if(iEnable[client] & ANY)
+			iEnable[client] &= ~ANY;
 		else
-			Format(textBuff, size, "%s\n%s", textBuff, SPACE[cType][poss]);
+			iEnable[client] |=ANY;
+
+		gCookie.Set(client, iEnable[client] & ANY ? "1" : "0");
+
+		ShowCookieMenu(client);
 	}
 }
 
-stock void Procc_Left_Down(int client, char[] textBuff, int size = 256)
+stock void SetTextAlign(int client, int offset, int position, char[] textBuff, int size = 256)
 {
-	for(int poss = 0, poss2 = cCount; poss < cCount; poss++, poss2--)	if(oldValue[client][poss][0])
+	if(textBuff[0])
+		textBuff[0] = '\0';
+
+	if(position == 0)
 	{
-		Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[cType][poss2], oldValue[client][poss]);
+		for(int poss = 0, poss2 = 5; poss < 5; poss++, poss2--)	if(iOldValues[client][poss][0])
+		{
+			Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[offset][poss2], iOldValues[client][poss]);
+		}
 	}
-}
-stock void Procc_Right_Down(int client, char[] textBuff, int size = 256)
-{
-	for(int poss = 0, poss2 = cCount; poss < cCount; poss++, poss2--)	if(oldValue[client][poss][0])
+	else if(position == 1)
 	{
-		Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[cType][poss], oldValue[client][poss]);
+		for(int poss = 5; poss > 0; poss--)
+		{
+			if(iOldValues[client][poss-1][0])
+				Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[offset][poss], iOldValues[client][poss-1]);
+			else
+				Format(textBuff, size, "%s\n%s", textBuff, SPACE[offset][poss]);
+		}
 	}
-}
-
-stock void Procc_Left_Up(int client, char[] textBuff, int size = 256)
-{
-	for(int poss = 0, poss2 = cCount; poss < cCount; poss++, poss2--)
+	else if(position == 2)
 	{
-		if(oldValue[client][poss2-1][0])
-			Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[cType][poss], oldValue[client][poss2-1]);
-		else
-			Format(textBuff, size, "%s\n%s", textBuff, SPACE[cType][poss]);
+		for(int poss = 0, poss2 = 5; poss < 5; poss++, poss2--)	if(iOldValues[client][poss][0])
+		{
+			Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[offset][poss], iOldValues[client][poss]);
+		}
+	}
+	else if(position == 3)
+	{
+		for(int poss = 0, poss2 = 5; poss < 5; poss++, poss2--)
+		{
+			if(iOldValues[client][poss2-1][0])
+				Format(textBuff, size, "%s\n%s%s", textBuff, SPACE[offset][poss], iOldValues[client][poss2-1]);
+			else
+				Format(textBuff, size, "%s\n%s", textBuff, SPACE[offset][poss]);
+		}
 	}
 }
 
-stock void SetHUDColor(ConVar cvar)
+// stock void SetHUDColor(ConVar cvar)
+// {
+// 	char buffer[16], clr[4][4];
+// 	cvar.GetString(buffer, sizeof(buffer));
+// 	ExplodeString(buffer, " ", clr, 4, 4);
+// 	for(int i; i <= 3; i++) cHudColor[i] = StringToInt(clr[i]);
+// }
+
+// stock void SetHUDPosition(ConVar cvar)
+// {
+// 	char buffer[16], pos[2][8];
+// 	cvar.GetString(buffer, sizeof(buffer));
+// 	ExplodeString(buffer, " ", pos, 2, 8);
+// 	cHudPoss[0] = StringToFloat(pos[0]);
+// 	cHudPoss[1] = StringToFloat(pos[1]);
+// }
+
+stock void LoadCfg()
 {
-	char buffer[16], clr[4][4];
-	cvar.GetString(buffer, sizeof(buffer));
-	ExplodeString(buffer, " ", clr, 4, 4);
-	for(int i; i <= 3; i++) cHudColor[i] = StringToInt(clr[i]);
+	if(kv)
+		delete kv;
+	
+	kv = new KeyValues("Shower Damage");
+	if(!kv.ImportFromFile(gPath))
+		SetFailState("Does not find file '%s'", gPath);
+
+	if(JumpTo(0, "any"))
+		gEnable |= ANY;
 }
 
-stock void SetHUDPosition(ConVar cvar)
+stock bool JumpTo(int client = 0, char[] key = "")
 {
-	char buffer[16], pos[2][8];
-	cvar.GetString(buffer, sizeof(buffer));
-	ExplodeString(buffer, " ", pos, 2, 8);
-	cHudPoss[0] = StringToFloat(pos[0]);
-	cHudPoss[1] = StringToFloat(pos[1]);
+	kv.Rewind();
+
+	if(key[0] && kv.JumpToKey(key) && kv.GetNum("enable"))
+		return true;
+	else if(client && iEnable[client] != NONE)
+		return ((gEnable & VIP && iEnable[client] & VIP && JumpTo(0, "vip")) || (gEnable & SHOP && iEnable[client] & SHOP && JumpTo(0, "shop")) || (gEnable & ANY && iEnable[client] & ANY && JumpTo(0, "any")));
+
+	return false;
 }
