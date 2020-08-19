@@ -8,9 +8,9 @@
 
 public Plugin myinfo = 
 {
-	name		= "[VIP/SHOP/ANY] Shower of Your Health",
+	name		= "[VIP/SHOP/ANY] Shower of Your Armor",
 	version		= "1.0.1",
-	description	= "Shower of your health",
+	description	= "Shower of your armor",
 	author		= "iLoco",
 	url			= "https://github.com/IL0co"
 }
@@ -43,7 +43,7 @@ ShowerEnable gEnable;
 char iOldValues[MAXPLAYERS+1][5][16];
 Handle gHud, iTimer[MAXPLAYERS+1];
 ShowerEnable iEnable[MAXPLAYERS+1];
-int iHealthNow[MAXPLAYERS+1];
+int iArmorNow[MAXPLAYERS+1];
 
 public APLRes AskPluginLoad2(Handle plugin, bool late, char[] error, int max)
 {
@@ -82,7 +82,7 @@ public void OnPluginEnd()
 
 public void OnPluginStart()
 {
-	BuildPath(Path_SM, gPath, sizeof(gPath), "configs/shower_health.cfg");
+	BuildPath(Path_SM, gPath, sizeof(gPath), "configs/shower_armor.cfg");
 	LoadCfg();
 
 	if(LibraryExists("vip_core"))
@@ -105,8 +105,8 @@ public void OnPluginStart()
 
 	if(gEnable & ANY)
 	{
-		gCookie = new Cookie("shower_health", "shower_health", CookieAccess_Private);
-		SetCookieMenuItem(CreditsCookieHandler, 0, "shower_health");
+		gCookie = new Cookie("shower_armor", "shower_armor", CookieAccess_Private);
+		SetCookieMenuItem(CreditsCookieHandler, 0, "shower_armor");
 	}
 
 	for(int i = 1; i <= MaxClients; i++)	if(IsClientAuthorized(i) && IsClientInGame(i))
@@ -126,7 +126,7 @@ public void VIP_OnVIPLoaded()
 	if(gEnable & VIP && JumpTo(0, "vip"))
 	{
 		char feature[64];
-		kv.GetString("vip feature name", feature, sizeof(feature), "shower_health");
+		kv.GetString("vip feature name", feature, sizeof(feature), "shower_armor");
 		VIP_RegisterFeature(feature, BOOL, _, CallBack_VIP_OnItemToggled, CallBack_VIP_OnItemDisplay);
 	}
 }
@@ -143,7 +143,7 @@ public Action CallBack_VIP_OnItemToggled(int client, const char[] sFeatureName, 
 
 public bool CallBack_VIP_OnItemDisplay(int client, const char[] feature, char[] buffer, int maxlen)
 {
-	FormatEx(buffer, maxlen, "%T", "Menu. VIP. Health", client);
+	FormatEx(buffer, maxlen, "%T", "Menu. VIP. Armor", client);
 	VIP_AddStringToggleStatus(buffer, buffer, maxlen, feature, client);
 
 	return true;
@@ -155,7 +155,7 @@ public void Shop_Started()
 		return;
 
 	char item[64];
-	kv.GetString("vip feature name", item, sizeof(item), "shower_health");
+	kv.GetString("vip feature name", item, sizeof(item), "shower_armor");
 
 	CategoryId category_id = Shop_RegisterCategory("stuff", "stuff", "");
 	if(Shop_StartItem(category_id, item))
@@ -168,7 +168,7 @@ public void Shop_Started()
 
 public bool CallBack_Shop_OnDisplay(int client, CategoryId category_id, const char[] category, ItemId item_id, const char[] item, ShopMenu menu, bool &disabled, const char[] name, char[] buffer, int maxlen)
 {
-	FormatEx(buffer, maxlen, "%T", "Menu. SHOP. Health", client);
+	FormatEx(buffer, maxlen, "%T", "Menu. SHOP. Armor", client);
 	return true;
 }
 
@@ -188,7 +188,7 @@ public ShopAction CallBack_Shop_OnItemUsed(int client, CategoryId category_id, c
 public Action Timer_Check(Handle timer)
 {
 	static char textBuff[256];
-	static int health, currHealth, rgba[4];
+	static int armor, currArmor, rgba[4];
 	static float pos[3];
 
 	for(int client = 1; client <= MaxClients; client++) 
@@ -196,19 +196,19 @@ public Action Timer_Check(Handle timer)
 		if(!IsClientInGame(client) || !JumpTo(client)) 
 			continue;
 
-		health = GetEntProp(client, Prop_Send, "m_iHealth");
-		currHealth = health-iHealthNow[client];
+		armor = GetEntProp(client, Prop_Send, "m_ArmorValue");
+		currArmor = armor-iArmorNow[client];
 
-		if(iHealthNow[client] != health || health != 100 && currHealth != 0)
+		if(iArmorNow[client] != armor || armor != 100 && currArmor != 0)
 		{
 			if(iTimer[client]) 
 				delete iTimer[client];
 			iTimer[client] = CreateTimer(kv.GetFloat("clean time", 1.0), TimerDamege_Clean, GetClientUserId(client), TIMER_REPEAT);
 
-			if(health > iHealthNow[client]) 
-				Format(iOldValues[client][0], sizeof(iOldValues[][]), "+%i", currHealth);
+			if(armor > iArmorNow[client]) 
+				Format(iOldValues[client][0], sizeof(iOldValues[][]), "+%i", currArmor);
 			else 
-				Format(iOldValues[client][0], sizeof(iOldValues[][]), "%i", currHealth);
+				Format(iOldValues[client][0], sizeof(iOldValues[][]), "%i", currArmor);
 
 			SetTextAlign(client, kv.GetNum("number of offsets", 1), kv.GetNum("align"), textBuff, sizeof(textBuff));
 			
@@ -221,7 +221,7 @@ public Action Timer_Check(Handle timer)
 			SetHudTextParams(pos[0], pos[1], kv.GetFloat("hide time", 3.0), rgba[0], rgba[1], rgba[2], rgba[3], 0, 0.0, 0.1, 0.1);
 			ShowSyncHudText(client, gHud, textBuff);
 
-			iHealthNow[client] = health;
+			iArmorNow[client] = armor;
 		}
 	}
 
@@ -263,7 +263,7 @@ public void CreditsCookieHandler(int client, CookieMenuAction action, any info, 
 	if(action == CookieMenuAction_DisplayOption)
 	{
 		SetGlobalTransTarget(client);
-		FormatEx(buffer, maxlen, "%t%t", iEnable[client] & ANY ? "Plus" : "Minus", "Menu. Any. Health");
+		FormatEx(buffer, maxlen, "%t%t", iEnable[client] & ANY ? "Plus" : "Minus", "Menu. Any. Armor");
 	}
 	else if(action == CookieMenuAction_SelectOption)
 	{	
@@ -324,7 +324,7 @@ stock void LoadCfg()
 	if(kv)
 		delete kv;
 	
-	kv = new KeyValues("Shower Health");
+	kv = new KeyValues("Shower Armor");
 	if(!kv.ImportFromFile(gPath))
 		SetFailState("Does not find file '%s'", gPath);
 
