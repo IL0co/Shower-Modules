@@ -8,9 +8,9 @@
 
 public Plugin myinfo = 
 {
-	name		= "[VIP/SHOP/ANY] Shower of Damage",
+	name		= "[VIP/SHOP/ANY] Shower of Your Health",
 	version		= "1.0.1",
-	description	= "Shower of your damage",
+	description	= "Shower of your health",
 	author		= "iLoco",
 	url			= "https://github.com/IL0co"
 }
@@ -43,6 +43,7 @@ ShowerEnable gEnable;
 char iOldValues[MAXPLAYERS+1][5][16];
 Handle gHud, iTimer[MAXPLAYERS+1];
 ShowerEnable iEnable[MAXPLAYERS+1];
+int iHealthNow[MAXPLAYERS+1];
 
 public APLRes AskPluginLoad2(Handle plugin, bool late, char[] error, int max)
 {
@@ -81,7 +82,7 @@ public void OnPluginEnd()
 
 public void OnPluginStart()
 {
-	BuildPath(Path_SM, gPath, sizeof(gPath), "configs/shower_damage.cfg");
+	BuildPath(Path_SM, gPath, sizeof(gPath), "configs/shower_health.cfg");
 	LoadCfg();
 
 	if(LibraryExists("vip_core"))
@@ -104,8 +105,8 @@ public void OnPluginStart()
 
 	if(gEnable & ANY)
 	{
-		gCookie = new Cookie("shower_damage", "shower_damage", CookieAccess_Private);
-		SetCookieMenuItem(CreditsCookieHandler, 0, "shower_damage");
+		gCookie = new Cookie("shower_health", "shower_health", CookieAccess_Private);
+		SetCookieMenuItem(CreditsCookieHandler, 0, "shower_health");
 	}
 
 	for(int i = 1; i <= MaxClients; i++)	if(IsClientAuthorized(i) && IsClientInGame(i))
@@ -114,7 +115,8 @@ public void OnPluginStart()
 		OnClientPostAdminCheck(i);
 	}
 
-	HookEvent("player_hurt", Event_PlayerHurt);
+	kv.Rewind();
+	CreateTimer(kv.GetFloat("timer delay", 0.1), Timer_Check, _, TIMER_REPEAT);
 
 	LoadTranslations("shower_base.phrases");
 }
@@ -124,7 +126,7 @@ public void VIP_OnVIPLoaded()
 	if(gEnable & VIP && JumpTo(0, "vip"))
 	{
 		char feature[64];
-		kv.GetString("vip feature name", feature, sizeof(feature), "shower_damage");
+		kv.GetString("vip feature name", feature, sizeof(feature), "shower_health");
 		VIP_RegisterFeature(feature, BOOL, _, CallBack_VIP_OnItemToggled, CallBack_VIP_OnItemDisplay);
 	}
 }
@@ -141,7 +143,7 @@ public Action CallBack_VIP_OnItemToggled(int client, const char[] sFeatureName, 
 
 public bool CallBack_VIP_OnItemDisplay(int client, const char[] feature, char[] buffer, int maxlen)
 {
-	FormatEx(buffer, maxlen, "%T", "Menu. VIP. Damage", client);
+	FormatEx(buffer, maxlen, "%T", "Menu. VIP. Health", client);
 	VIP_AddStringToggleStatus(buffer, buffer, maxlen, feature, client);
 
 	return true;
@@ -153,7 +155,7 @@ public void Shop_Started()
 		return;
 
 	char item[64];
-	kv.GetString("vip feature name", item, sizeof(item), "shower_damage");
+	kv.GetString("vip feature name", item, sizeof(item), "shower_health");
 
 	CategoryId category_id = Shop_RegisterCategory("stuff", "stuff", "");
 	if(Shop_StartItem(category_id, item))
@@ -166,7 +168,7 @@ public void Shop_Started()
 
 public bool CallBack_Shop_OnDisplay(int client, CategoryId category_id, const char[] category, ItemId item_id, const char[] item, ShopMenu menu, bool &disabled, const char[] name, char[] buffer, int maxlen)
 {
-	FormatEx(buffer, maxlen, "%T", "Menu. SHOP. Damage", client);
+	FormatEx(buffer, maxlen, "%T", "Menu. SHOP. Health", client);
 	return true;
 }
 
@@ -183,43 +185,44 @@ public ShopAction CallBack_Shop_OnItemUsed(int client, CategoryId category_id, c
 	return Shop_UseOn;
 }
 
-public Action Event_PlayerHurt(Event hEvent, const char[] name, bool dontBroadcast)
+public Action Timer_Check(Handle timer)
 {
 	static char textBuff[256];
-	static int client, victim, damage, rgba[4];
+	static int health, currHealth, rgba[4];
 	static float pos[3];
 
-	client = GetClientOfUserId(GetEventInt(hEvent, "attacker"));
-
-	if(!client || !IsClientInGame(client) || !JumpTo(client)) 
-		return Plugin_Continue;
-
-	victim = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-
-	if(client != victim)
+	for(int client = 1; client <= MaxClients; client++) 
 	{
-		damage = GetEventInt(hEvent, "dmg_health");
-		
-		if(iTimer[client]) 
-			delete iTimer[client];
-		iTimer[client] = CreateTimer(kv.GetFloat("clean time", 1.0), TimerDamege_Clean, GetClientUserId(client), TIMER_REPEAT);
+		if(!IsClientInGame(client) || !JumpTo(client)) 
+			continue;
 
-		if(damage == -1) 
-			Format(iOldValues[client][0], sizeof(iOldValues[][]), "%T", "Killed", client);
-		else 
-			Format(iOldValues[client][0], sizeof(iOldValues[][]), "-%i", damage);
-		
-		SetTextAlign(client, kv.GetNum("number of offsets", 1), kv.GetNum("align"), textBuff, sizeof(textBuff));
-		
-		for(int poss = kv.GetNum("number of columns") - 1; poss > 0; poss--)	
-			iOldValues[client][poss] = iOldValues[client][poss-1];
+		health = GetEntProp(client, Prop_Send, "m_iHealth");
+		currHealth = health-iHealthNow[client];
 
-		kv.GetColor4("hud color", rgba);
-		kv.GetVector("hud position", pos);
+		if(iHealthNow[client] != health || health != 100 && currHealth != 0)
+		{
+			if(iTimer[client]) 
+				delete iTimer[client];
+			iTimer[client] = CreateTimer(kv.GetFloat("clean time", 1.0), TimerDamege_Clean, GetClientUserId(client), TIMER_REPEAT);
 
-		SetHudTextParams(pos[0], pos[1], kv.GetFloat("hide time", 3.0), rgba[0], rgba[1], rgba[2], rgba[3], 0, 0.0, 0.1, 0.1);
-		ShowSyncHudText(client, gHud, textBuff);
+			if(health > iHealthNow[client]) 
+				Format(iOldValues[client][0], sizeof(iOldValues[][]), "+%i", currHealth);
+			else 
+				Format(iOldValues[client][0], sizeof(iOldValues[][]), "%i", currHealth);
 
+			SetTextAlign(client, kv.GetNum("number of offsets", 1), kv.GetNum("align"), textBuff, sizeof(textBuff));
+			
+			for(int poss = kv.GetNum("number of columns") - 1; poss > 0; poss--)	
+				iOldValues[client][poss] = iOldValues[client][poss-1];
+
+			kv.GetColor4("hud color", rgba);
+			kv.GetVector("hud position", pos);
+
+			SetHudTextParams(pos[0], pos[1], kv.GetFloat("hide time", 3.0), rgba[0], rgba[1], rgba[2], rgba[3], 0, 0.0, 0.1, 0.1);
+			ShowSyncHudText(client, gHud, textBuff);
+
+			iHealthNow[client] = health;
+		}
 	}
 
 	return Plugin_Continue;
@@ -260,7 +263,7 @@ public void CreditsCookieHandler(int client, CookieMenuAction action, any info, 
 	if(action == CookieMenuAction_DisplayOption)
 	{
 		SetGlobalTransTarget(client);
-		FormatEx(buffer, maxlen, "%t%t", iEnable[client] & ANY ? "Plus" : "Minus", "Menu. Any. Damage");
+		FormatEx(buffer, maxlen, "%t%t", iEnable[client] & ANY ? "Plus" : "Minus", "Menu. Any. Health");
 	}
 	else if(action == CookieMenuAction_SelectOption)
 	{	
@@ -316,29 +319,12 @@ stock void SetTextAlign(int client, int offset, int position, char[] textBuff, i
 	}
 }
 
-// stock void SetHUDColor(ConVar cvar)
-// {
-// 	char buffer[16], clr[4][4];
-// 	cvar.GetString(buffer, sizeof(buffer));
-// 	ExplodeString(buffer, " ", clr, 4, 4);
-// 	for(int i; i <= 3; i++) cHudColor[i] = StringToInt(clr[i]);
-// }
-
-// stock void SetHUDPosition(ConVar cvar)
-// {
-// 	char buffer[16], pos[2][8];
-// 	cvar.GetString(buffer, sizeof(buffer));
-// 	ExplodeString(buffer, " ", pos, 2, 8);
-// 	cHudPoss[0] = StringToFloat(pos[0]);
-// 	cHudPoss[1] = StringToFloat(pos[1]);
-// }
-
 stock void LoadCfg()
 {
 	if(kv)
 		delete kv;
 	
-	kv = new KeyValues("Shower Damage");
+	kv = new KeyValues("Shower Health");
 	if(!kv.ImportFromFile(gPath))
 		SetFailState("Does not find file '%s'", gPath);
 
