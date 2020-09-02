@@ -46,6 +46,7 @@ ShowerEnable iEnable[MAXPLAYERS+1];
 
 public APLRes AskPluginLoad2(Handle plugin, bool late, char[] error, int max)
 {
+	MarkNativeAsOptional("VIP_UnregisterMe");
 	__pl_vip_core_SetNTVOptional();
 	__pl_shop_SetNTVOptional();
 
@@ -315,23 +316,6 @@ stock void SetTextAlign(int client, int offset, int position, char[] textBuff, i
 		}
 	}
 }
-
-// stock void SetHUDColor(ConVar cvar)
-// {
-// 	char buffer[16], clr[4][4];
-// 	cvar.GetString(buffer, sizeof(buffer));
-// 	ExplodeString(buffer, " ", clr, 4, 4);
-// 	for(int i; i <= 3; i++) cHudColor[i] = StringToInt(clr[i]);
-// }
-
-// stock void SetHUDPosition(ConVar cvar)
-// {
-// 	char buffer[16], pos[2][8];
-// 	cvar.GetString(buffer, sizeof(buffer));
-// 	ExplodeString(buffer, " ", pos, 2, 8);
-// 	cHudPoss[0] = StringToFloat(pos[0]);
-// 	cHudPoss[1] = StringToFloat(pos[1]);
-// }
 
 stock void LoadCfg()
 {
