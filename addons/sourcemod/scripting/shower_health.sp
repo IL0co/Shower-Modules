@@ -47,6 +47,7 @@ int iHealthNow[MAXPLAYERS+1];
 
 public APLRes AskPluginLoad2(Handle plugin, bool late, char[] error, int max)
 {
+	MarkNativeAsOptional("VIP_UnregisterMe");
 	__pl_vip_core_SetNTVOptional();
 	__pl_shop_SetNTVOptional();
 
