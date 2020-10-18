@@ -111,8 +111,8 @@ public void OnPluginStart()
 
 	for(int i = 1; i <= MaxClients; i++)	if(IsClientAuthorized(i) && IsClientInGame(i))
 	{
-		OnClientCookiesCached(i);
 		OnClientPostAdminCheck(i);
+		OnClientCookiesCached(i);
 	}
 
 	HookEvent("player_hurt", Event_PlayerHurt);
