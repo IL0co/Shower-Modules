@@ -110,10 +110,7 @@ public void OnPluginStart()
 	}
 
 	for(int i = 1; i <= MaxClients; i++)	if(IsClientAuthorized(i) && IsClientInGame(i))
-	{
-		OnClientPostAdminCheck(i);
 		OnClientCookiesCached(i);
-	}
 
 	HookEvent("player_hurt", Event_PlayerHurt);
 
@@ -238,14 +235,11 @@ public Action TimerDamege_Clean(Handle timer, any client)
 	return Plugin_Stop;
 }
 
-public void OnClientPostAdminCheck(int client)
+public void OnClientCookiesCached(int client)
 {
 	iEnable[client] = NONE;
 	iTimer[client] = null;
-}
 
-public void OnClientCookiesCached(int client)
-{
 	if(!(gEnable & ANY)) 
 		return;
 
